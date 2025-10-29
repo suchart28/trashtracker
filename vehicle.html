@@ -9,7 +9,7 @@
   </style>
 </head>
 <body>
-  <h1>Garbage Truck Location Sender</h1>
+  <h1>ระบบระบุพิกัดตำแหน่งรถขยะเทศบาล</h1>
   <p id="status">กำลังตรวจหาตำแหน่ง...</p>
 
   <script type="module">
@@ -29,7 +29,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const truckId = prompt("ระบุรหัสรถเก็บขยะ เช่น truck1");
+    const truckId = prompt("ระบุรหัสรถเก็บขยะ เช่น คันหมายเลข 1");
 
     function sendLocation(lat, lon) {
       set(ref(db, 'trucks/' + truckId), {
