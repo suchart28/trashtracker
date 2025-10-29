@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>รถเก็บขยะเทศบาลใกล้ฉัน</title>
+  <title>รถเก็บขยะ Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Google Font Kanit -->
@@ -17,40 +17,46 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      background-color: #f0f0f0;
+      background: #f0f0f0;
       text-align: center;
     }
 
-    h1 { 
-      font-size: 2.5em; 
-      margin-bottom: 20px; 
-      color: #2c3e50;
-    }
-
-    #truck-id-display {
+    #truck-number {
       font-size: 5em;
+      font-weight: 700;
+      margin-top: 20px;
       color: #e74c3c;
-      margin: 20px 0;
     }
 
     #current-time {
-      font-size: 6em;  /* ขยายใหญ่สำหรับมือถือแนวตั้ง */
-      color: #333;
-      margin-top: auto;
-      margin-bottom: 50px; /* ขยับขึ้นจากขอบล่าง */
+      font-size: 3em;
+      margin-top: 20px;
+      color: #2c3e50;
     }
 
-    #status {
-      margin-top: 10px;
+    #input-form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    #input-form input, #input-form button {
       font-size: 1.5em;
-      color: #333;
+      padding: 10px;
+      margin: 5px;
     }
   </style>
 </head>
 <body>
   <h1>รถเก็บขยะเทศบาลใกล้ฉัน</h1>
-  <div id="truck-id-display"></div>
-  <div id="status">กำลังตรวจหาตำแหน่ง...</div>
+
+  <div id="input-form">
+    <input type="text" id="truck-id" placeholder="กรอกหมายเลขรถ">
+    <button id="start-btn">เริ่มส่งพิกัด</button>
+  </div>
+
+  <div id="truck-number"></div>
   <div id="current-time"></div>
 
   <script type="module">
@@ -70,46 +76,71 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // รับหมายเลขรถ
-    const truckId = prompt("ระบุรหัสรถเก็บขยะ เช่น รถคันที่ 1");
-    document.getElementById('truck-id-display').innerText = truckId;
+    const truckNumberDiv = document.getElementById('truck-number');
+    const currentTimeDiv = document.getElementById('current-time');
+    const startBtn = document.getElementById('start-btn');
+    const truckIdInput = document.getElementById('truck-id');
 
-    function sendLocation(lat, lon) {
-      set(ref(db, 'trucks/' + truckId), {
-        lat,
-        lon,
-        timestamp: Date.now()
-      });
-      document.getElementById('status').innerText = `ส่งพิกัดล่าสุด: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-    }
+    let truckId = '';
+    let sendInterval = null;
 
-    function updateLocation() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          const { latitude, longitude } = pos.coords;
-          sendLocation(latitude, longitude);
-        }, err => {
-          document.getElementById('status').innerText = "ไม่สามารถรับพิกัดได้";
-        });
-      } else {
-        document.getElementById('status').innerText = "เบราว์เซอร์ไม่รองรับ GPS";
-      }
-    }
-
-    // ส่งทุก 10 วินาที
-    setInterval(updateLocation, 10000);
-    updateLocation();
-
-    // อัปเดตเวลาปัจจุบันแบบ real-time
-    function updateTime() {
+    function updateClock() {
       const now = new Date();
       const hh = String(now.getHours()).padStart(2,'0');
       const mm = String(now.getMinutes()).padStart(2,'0');
       const ss = String(now.getSeconds()).padStart(2,'0');
-      document.getElementById('current-time').innerText = `${hh}:${mm}:${ss}`;
+      currentTimeDiv.textContent = `${hh}:${mm}:${ss}`;
     }
-    setInterval(updateTime, 1000);
-    updateTime();
+
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    startBtn.addEventListener('click', () => {
+      truckId = truckIdInput.value.trim();
+      if(!truckId) {
+        alert('กรุณากรอกหมายเลขรถ');
+        return;
+      }
+      truckNumberDiv.textContent = truckId;
+      truckIdInput.disabled = true;
+      startBtn.disabled = true;
+
+      if (navigator.geolocation) {
+        sendLocation();
+        sendInterval = setInterval(sendLocation, 10000); // ส่งทุก 10 วินาที
+      } else {
+        alert('เบราว์เซอร์ไม่รองรับ GPS');
+      }
+    });
+
+    function sendLocation() {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+
+        set(ref(db, 'trucks/' + truckId), { lat, lon });
+      }, err => console.error('ไม่สามารถหาตำแหน่งได้', err));
+    }
+
+    // ------------------------
+    // Wake Lock - หน้าจอสว่างตลอดเวลา
+    async function keepScreenOn() {
+      if ('wakeLock' in navigator) {
+        try {
+          const wakeLock = await navigator.wakeLock.request('screen');
+          console.log('หน้าจอจะไม่ดับ');
+          wakeLock.addEventListener('release', () => console.log('Wake lock ถูกยกเลิก'));
+        } catch (err) {
+          console.error(`ไม่สามารถเปิด Wake Lock: ${err}`);
+        }
+      }
+    }
+    window.addEventListener('load', keepScreenOn);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') keepScreenOn();
+    });
+    // ------------------------
+
   </script>
 </body>
 </html>
