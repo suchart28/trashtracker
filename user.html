@@ -133,10 +133,10 @@
 
     let userLat = 0, userLon = 0;
     const truckMarkers = {};
-    const TRUCK_TIMEOUT = 10 * 60 * 1000; // 10 นาที
 
     const map = L.map('map').setView([13.736717, 100.523186], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
     const homeMarker = L.marker([0,0], {title: "บ้านคุณ"}).addTo(map);
 
     function haversine(lat1, lon1, lat2, lon2) {
@@ -191,27 +191,15 @@
 
         const trucksRef = ref(db, 'trucks/');
         onValue(trucksRef, snapshot => {
-          const data = snapshot.val();
-          if(!data) return;
+          const data = snapshot.val() || {};
 
-          const now = Date.now();
           const trucksArray = [];
-
           for (let id in data) {
             const t = data[id];
 
-            // กรองรถไม่มีชื่อ / พิกัด null
+            // กรองรถที่ไม่มีชื่อหรือพิกัด null
             if(!id || id.trim() === '') continue;
             if(t.lat == null || t.lon == null) continue;
-
-            // ลบรถเกิน 10 นาที
-            if(!t.timestamp || (now - t.timestamp) > TRUCK_TIMEOUT) {
-              if(truckMarkers[id]) {
-                map.removeLayer(truckMarkers[id]);
-                delete truckMarkers[id];
-              }
-              continue;
-            }
 
             const distance = haversine(userLat, userLon, t.lat, t.lon);
             const eta = Math.round(distance / 0.02);
@@ -221,6 +209,18 @@
           trucksArray.sort((a,b) => a.distance - b.distance);
           updateTrucksDisplay(trucksArray);
 
+          // ------------------------
+          // ลบ Marker ของรถที่ไม่มีใน Firebase
+          const currentIds = trucksArray.map(t => t.id);
+          for (let id in truckMarkers) {
+            if (!currentIds.includes(id)) {
+              map.removeLayer(truckMarkers[id]);
+              delete truckMarkers[id];
+            }
+          }
+          // ------------------------
+
+          // อัพเดท Marker ของรถที่ยังอยู่
           trucksArray.forEach((t, idx) => {
             if(truckMarkers[t.id]) {
               const className = idx===0 ? 'marker-div marker-nearest' : 'marker-div marker-other';
