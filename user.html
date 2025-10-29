@@ -35,7 +35,7 @@
     }
 
     .truck { 
-      padding: 15px; 
+      padding: 20px; 
       margin: 5px auto; 
       border-radius: 8px; 
       color: #fff; 
@@ -47,13 +47,13 @@
     }
 
     .nearest { 
-      font-size: 2.5em; 
+      font-size: 3em;  /* ตัวเลขใหญ่ขึ้น */
       background-color: #e74c3c; 
       font-weight: 700;
     }
 
     .other { 
-      font-size: 1.8em; 
+      font-size: 2.2em;  /* ตัวเลขใหญ่ขึ้นสำหรับรถอื่น */
       background-color: #3498db; 
       font-weight: 700;
     }
@@ -61,7 +61,7 @@
     .truck button {
       margin-left: 15px;
       padding: 5px 10px;
-      font-size: 0.8em;
+      font-size: 0.9em;
       border: none;
       border-radius: 5px;
       background-color: #c0392b;
@@ -84,18 +84,18 @@
 
     .marker-nearest {
       background-color: #e74c3c;
-      width: 70px;
-      height: 70px;
-      font-size: 16px;
+      width: 80px;   /* ขยายขนาด marker */
+      height: 80px;
+      font-size: 18px;  /* ตัวเลขใหญ่ขึ้น */
       font-weight: bold;
       animation: pulse 1.5s infinite;
     }
 
     .marker-other {
       background-color: #3498db;
-      width: 50px;
-      height: 50px;
-      font-size: 12px;
+      width: 60px;   /* ขยายขนาด marker */
+      height: 60px;
+      font-size: 16px;  /* ตัวเลขใหญ่ขึ้น */
       font-weight: bold;
     }
 
@@ -113,7 +113,6 @@
     <div id="trucks"></div>
   </div>
 
-  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
@@ -197,6 +196,7 @@
 
           const trucksArray = [];
           for (let id in data) {
+            if(!id || id.trim() === '') continue;
             const t = data[id];
             const distance = haversine(userLat, userLon, t.lat, t.lon);
             const eta = Math.round(distance / 0.02);
@@ -222,6 +222,25 @@
     } else {
       alert("เบราว์เซอร์ไม่รองรับ GPS");
     }
+
+    // ------------------------
+    // Wake Lock - หน้าจอสว่างตลอดเวลา
+    async function keepScreenOn() {
+      if ('wakeLock' in navigator) {
+        try {
+          const wakeLock = await navigator.wakeLock.request('screen');
+          console.log('หน้าจอจะไม่ดับ');
+          wakeLock.addEventListener('release', () => console.log('Wake lock ถูกยกเลิก'));
+        } catch (err) {
+          console.error(`ไม่สามารถเปิด Wake Lock: ${err}`);
+        }
+      }
+    }
+    window.addEventListener('load', keepScreenOn);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') keepScreenOn();
+    });
+    // ------------------------
 
   </script>
 </body>
