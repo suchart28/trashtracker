@@ -2,7 +2,12 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>Garbage Truck Tracker</title>
+  <title>รถเก็บขยะเทศบาลใกล้ฉัน</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Google Font Kanit -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
+
   <style>
     html, body {
       height: 100%;
@@ -16,32 +21,34 @@
       text-align: center;
     }
 
-    h1 { font-size: 3em; margin-bottom: 20px; }
+    h1 { 
+      font-size: 2.5em; 
+      margin-bottom: 20px; 
+      color: #2c3e50;
+    }
 
     #truck-id-display {
       font-size: 5em;
       color: #e74c3c;
-      margin: auto;
+      margin: 20px 0;
     }
 
     #current-time {
-      position: fixed;
-      bottom: 20px;
-      font-size: 2em;
+      font-size: 6em;  /* ขยายใหญ่สำหรับมือถือแนวตั้ง */
       color: #333;
+      margin-top: auto;
+      margin-bottom: 50px; /* ขยับขึ้นจากขอบล่าง */
     }
 
     #status {
-      margin-top: 20px;
+      margin-top: 10px;
       font-size: 1.5em;
       color: #333;
     }
   </style>
-  <!-- Google Font Kanit -->
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1>Garbage Truck Location Sender</h1>
+  <h1>รถเก็บขยะเทศบาลใกล้ฉัน</h1>
   <div id="truck-id-display"></div>
   <div id="status">กำลังตรวจหาตำแหน่ง...</div>
   <div id="current-time"></div>
@@ -64,7 +71,7 @@
     const db = getDatabase(app);
 
     // รับหมายเลขรถ
-    const truckId = prompt("ระบุรหัสรถเก็บขยะ เช่น truck1");
+    const truckId = prompt("ระบุรหัสรถเก็บขยะ เช่น รถคันที่ 1");
     document.getElementById('truck-id-display').innerText = truckId;
 
     function sendLocation(lat, lon) {
@@ -93,7 +100,7 @@
     setInterval(updateLocation, 10000);
     updateLocation();
 
-    // อัปเดตเวลาแบบเรียลไทม์
+    // อัปเดตเวลาปัจจุบันแบบ real-time
     function updateTime() {
       const now = new Date();
       const hh = String(now.getHours()).padStart(2,'0');
