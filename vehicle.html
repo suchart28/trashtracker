@@ -21,6 +21,12 @@
       text-align: center;
     }
 
+    h1 {
+      font-size: 2em;
+      margin-top: 20px;
+      color: #2c3e50;
+    }
+
     #truck-number {
       font-size: 5em;
       font-weight: 700;
@@ -53,7 +59,7 @@
 
   <div id="input-form">
     <input type="text" id="truck-id" placeholder="กรอกหมายเลขรถ">
-    <button id="start-btn">เริ่มส่งพิกัด</button>
+    <button id="start-btn">เริ่มส่งค่าพิกัด</button>
   </div>
 
   <div id="truck-number"></div>
@@ -80,6 +86,7 @@
     const currentTimeDiv = document.getElementById('current-time');
     const startBtn = document.getElementById('start-btn');
     const truckIdInput = document.getElementById('truck-id');
+    const inputForm = document.getElementById('input-form');
 
     let truckId = '';
     let sendInterval = null;
@@ -95,32 +102,44 @@
     setInterval(updateClock, 1000);
     updateClock();
 
+    function sendLocation() {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        set(ref(db, 'trucks/' + truckId), { lat, lon });
+      }, err => console.error('ไม่สามารถหาตำแหน่ง GPS ได้', err));
+    }
+
     startBtn.addEventListener('click', () => {
       truckId = truckIdInput.value.trim();
       if(!truckId) {
         alert('กรุณากรอกหมายเลขรถ');
         return;
       }
-      truckNumberDiv.textContent = truckId;
-      truckIdInput.disabled = true;
-      startBtn.disabled = true;
 
       if (navigator.geolocation) {
-        sendLocation();
-        sendInterval = setInterval(sendLocation, 10000); // ส่งทุก 10 วินาที
+        navigator.geolocation.getCurrentPosition(pos => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+
+          // ส่งค่าไป Firebase ครั้งแรก
+          set(ref(db, 'trucks/' + truckId), { lat, lon })
+            .then(() => {
+              // ซ่อน input + ปุ่ม
+              inputForm.style.display = 'none';
+
+              // แสดงหมายเลขรถใหญ่
+              truckNumberDiv.textContent = truckId;
+
+              // เริ่มส่งค่าพิกัดทุก 10 วินาที
+              sendInterval = setInterval(sendLocation, 10000);
+            })
+            .catch(err => console.error('ส่งพิกัดไม่สำเร็จ', err));
+        }, err => alert('ไม่สามารถหาตำแหน่ง GPS ได้'));
       } else {
         alert('เบราว์เซอร์ไม่รองรับ GPS');
       }
     });
-
-    function sendLocation() {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-
-        set(ref(db, 'trucks/' + truckId), { lat, lon });
-      }, err => console.error('ไม่สามารถหาตำแหน่งได้', err));
-    }
 
     // ------------------------
     // Wake Lock - หน้าจอสว่างตลอดเวลา
