@@ -1,83 +1,108 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8" />
-<title>รถเก็บขยะเทศบาลใกล้ฉัน</title>
+  <meta charset="UTF-8">
+  <title>Garbage Truck Tracker</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Kanit', sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #f0f0f0;
+      text-align: center;
+    }
 
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    h1 { font-size: 3em; margin-bottom: 20px; }
 
-<style>
-  body {
-    font-family: "Kanit", sans-serif;
-    text-align: center;
-    padding-top: 50px;
-    background: #f4f6f9;
-  }
-  #truck-id-display {
-    font-size: 60px;
-    margin-top: 20px;
-    font-weight: 600;
-  }
-  #current-time {
-    font-size: 28px;
-    margin-top: 50px;
-    color: #555;
-  }
-</style>
+    #truck-id-display {
+      font-size: 5em;
+      color: #e74c3c;
+      margin: auto;
+    }
+
+    #current-time {
+      position: fixed;
+      bottom: 20px;
+      font-size: 2em;
+      color: #333;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 1.5em;
+      color: #333;
+    }
+  </style>
+  <!-- Google Font Kanit -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <h1>Garbage Truck Location Sender</h1>
+  <div id="truck-id-display"></div>
+  <div id="status">กำลังตรวจหาตำแหน่ง...</div>
+  <div id="current-time"></div>
 
-<h1>รถเก็บขยะเทศบาลใกล้ฉัน</h1>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-database.js";
 
-<label>ป้อนหมายเลขรถ:</label>
-<input type="text" id="truckId" placeholder="เช่น 12">
-<button onclick="startSending()">เริ่มส่งตำแหน่ง</button>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
+      authDomain: "suchartwork-1487382986748.firebaseapp.com",
+      databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
+      projectId: "suchartwork-1487382986748",
+      storageBucket: "suchartwork-1487382986748.firebasestorage.app",
+      messagingSenderId: "353884592527",
+      appId: "1:353884592527:web:0d5f392910ab0d2ceb13fa"
+    };
 
-<div id="truck-id-display"></div>
-<div id="current-time"></div>
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    // รับหมายเลขรถ
+    const truckId = prompt("ระบุรหัสรถเก็บขยะ เช่น truck1");
+    document.getElementById('truck-id-display').innerText = truckId;
 
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
-  authDomain: "suchartwork-1487382986748.firebaseapp.com",
-  databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
-  projectId: "suchartwork-1487382986748",
-  storageBucket: "suchartwork-1487382986748.firebasestorage.app",
-  messagingSenderId: "353884592527",
-  appId: "1:353884592527:web:0d5f392910ab0d2ceb13fa"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-let truckIdentifier = "";
-
-function startSending() {
-  truckIdentifier = document.getElementById("truckId").value;
-  if (!truckIdentifier) return alert("กรุณาป้อนหมายเลขรถ");
-
-  document.getElementById("truck-id-display").innerText = "🚛 รถหมายเลข " + truckIdentifier;
-
-  setInterval(() => {
-    navigator.geolocation.getCurrentPosition(pos => {
-      db.ref("trucks/" + truckIdentifier).set({
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
+    function sendLocation(lat, lon) {
+      set(ref(db, 'trucks/' + truckId), {
+        lat,
+        lon,
         timestamp: Date.now()
       });
-    });
-  }, 10000);
+      document.getElementById('status').innerText = `ส่งพิกัดล่าสุด: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    }
 
-  // แสดงเวลา
-  setInterval(() => {
-    let t = new Date();
-    document.getElementById("current-time").innerText = t.toLocaleTimeString();
-  }, 1000);
-}
-</script>
+    function updateLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const { latitude, longitude } = pos.coords;
+          sendLocation(latitude, longitude);
+        }, err => {
+          document.getElementById('status').innerText = "ไม่สามารถรับพิกัดได้";
+        });
+      } else {
+        document.getElementById('status').innerText = "เบราว์เซอร์ไม่รองรับ GPS";
+      }
+    }
 
+    // ส่งทุก 10 วินาที
+    setInterval(updateLocation, 10000);
+    updateLocation();
+
+    // อัปเดตเวลาแบบเรียลไทม์
+    function updateTime() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2,'0');
+      const mm = String(now.getMinutes()).padStart(2,'0');
+      const ss = String(now.getSeconds()).padStart(2,'0');
+      document.getElementById('current-time').innerText = `${hh}:${mm}:${ss}`;
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+  </script>
 </body>
 </html>
