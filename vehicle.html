@@ -4,13 +4,47 @@
   <meta charset="UTF-8">
   <title>Garbage Truck Tracker</title>
   <style>
-    body { font-family: Arial; text-align: center; padding: 50px; }
-    h1 { font-size: 3em; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Kanit', sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #f0f0f0;
+      text-align: center;
+    }
+
+    h1 { font-size: 3em; margin-bottom: 20px; }
+
+    #truck-id-display {
+      font-size: 5em;
+      color: #e74c3c;
+      margin: auto;
+    }
+
+    #current-time {
+      position: fixed;
+      bottom: 20px;
+      font-size: 2em;
+      color: #333;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 1.5em;
+      color: #333;
+    }
   </style>
+  <!-- Google Font Kanit -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1>ระบบระบุพิกัดตำแหน่งรถขยะเทศบาล</h1>
-  <p id="status">กำลังตรวจหาตำแหน่ง...</p>
+  <h1>Garbage Truck Location Sender</h1>
+  <div id="truck-id-display"></div>
+  <div id="status">กำลังตรวจหาตำแหน่ง...</div>
+  <div id="current-time"></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
@@ -29,7 +63,9 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const truckId = prompt("ระบุรหัสรถเก็บขยะ เช่น รถหมายเลข 1");
+    // รับหมายเลขรถ
+    const truckId = prompt("ระบุรหัสรถเก็บขยะ เช่น truck1");
+    document.getElementById('truck-id-display').innerText = truckId;
 
     function sendLocation(lat, lon) {
       set(ref(db, 'trucks/' + truckId), {
@@ -56,6 +92,17 @@
     // ส่งทุก 10 วินาที
     setInterval(updateLocation, 10000);
     updateLocation();
+
+    // อัปเดตเวลาแบบเรียลไทม์
+    function updateTime() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2,'0');
+      const mm = String(now.getMinutes()).padStart(2,'0');
+      const ss = String(now.getSeconds()).padStart(2,'0');
+      document.getElementById('current-time').innerText = `${hh}:${mm}:${ss}`;
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
   </script>
 </body>
 </html>
