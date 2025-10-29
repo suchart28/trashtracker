@@ -47,13 +47,13 @@
     }
 
     .nearest { 
-      font-size: 3em;  /* ตัวเลขใหญ่ขึ้น */
+      font-size: 3em;
       background-color: #e74c3c; 
       font-weight: 700;
     }
 
     .other { 
-      font-size: 2.2em;  /* ตัวเลขใหญ่ขึ้นสำหรับรถอื่น */
+      font-size: 2.2em;
       background-color: #3498db; 
       font-weight: 700;
     }
@@ -84,18 +84,18 @@
 
     .marker-nearest {
       background-color: #e74c3c;
-      width: 80px;   /* ขยายขนาด marker */
+      width: 80px;
       height: 80px;
-      font-size: 18px;  /* ตัวเลขใหญ่ขึ้น */
+      font-size: 18px;
       font-weight: bold;
       animation: pulse 1.5s infinite;
     }
 
     .marker-other {
       background-color: #3498db;
-      width: 60px;   /* ขยายขนาด marker */
+      width: 60px;
       height: 60px;
-      font-size: 16px;  /* ตัวเลขใหญ่ขึ้น */
+      font-size: 16px;
       font-weight: bold;
     }
 
@@ -196,8 +196,12 @@
 
           const trucksArray = [];
           for (let id in data) {
-            if(!id || id.trim() === '') continue;
             const t = data[id];
+
+            // กรองรถที่ไม่มีชื่อหรือพิกัด null
+            if(!id || id.trim() === '') continue;
+            if(t.lat == null || t.lon == null) continue;
+
             const distance = haversine(userLat, userLon, t.lat, t.lon);
             const eta = Math.round(distance / 0.02);
             trucksArray.push({ id, lat: t.lat, lon: t.lon, distance, eta });
