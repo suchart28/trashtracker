@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>สถานะรถเก็บขยะ</title>
+
+  <link rel="stylesheet" href="assets/style.css">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    #map { width:100%; height:60vh; border-radius:10px; margin-top:10px; }
+  </style>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2e7d32">
+</head>
+<body>
+  <h1>รถเก็บขยะที่ใกล้คุณที่สุด</h1>
+
+  <div id="nearest-info">
+    <h2 id="nearest-label">กำลังคำนวณ...</h2>
+    <div id="nearest-time" style="font-size: 4em; font-weight: bold;"></div>
+  </div>
+
+  <div id="map"></div>
+
+  <audio id="alert-sound" src="assets/alert.mp3" preload="auto"></audio>
+
+  <script type="module" src="assets/user.js"></script>
+  <script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/service-worker.js")
+      .then(() => console.log("✅ Service Worker Registered"));
+  }
+  </script>
+</body>
+</html>
