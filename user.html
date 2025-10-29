@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>Garbage Truck Dashboard Advanced</title>
+  <title>เวลาที่รถเก็บขยะจะมาถึง</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Google Font Kanit -->
@@ -15,7 +15,7 @@
       height: 100%; 
       margin: 0; 
       font-family: 'Kanit', sans-serif; 
-      background-color: #f0f0f0;
+      background: #f0f0f0;
     }
 
     #map { height: 60%; }
@@ -29,9 +29,9 @@
     }
 
     #eta-panel h2 {
-      text-align: center;
       font-size: 2em;
       margin-bottom: 10px;
+      text-align: center;
     }
 
     .truck { 
@@ -41,6 +41,9 @@
       color: #fff; 
       text-align: center;
       width: 90%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .nearest { 
@@ -53,6 +56,17 @@
       font-size: 1.8em; 
       background-color: #3498db; 
       font-weight: 700;
+    }
+
+    .truck button {
+      margin-left: 15px;
+      padding: 5px 10px;
+      font-size: 0.8em;
+      border: none;
+      border-radius: 5px;
+      background-color: #c0392b;
+      color: white;
+      cursor: pointer;
     }
 
     /* Marker Styles */
@@ -138,11 +152,24 @@
     function updateTrucksDisplay(trucksArray) {
       const trucksDiv = document.getElementById('trucks');
       trucksDiv.innerHTML = '';
+
       trucksArray.forEach((t, idx) => {
         const div = document.createElement('div');
         div.className = 'truck ' + (idx===0 ? 'nearest' : 'other');
-        div.innerHTML = `${t.id}: ${t.eta} นาที`;
+        div.innerHTML = `
+          ${t.id}: ${t.eta} นาที
+          <button>ลบ</button>
+        `;
         trucksDiv.appendChild(div);
+
+        const btn = div.querySelector('button');
+        btn.addEventListener('click', () => {
+          if (truckMarkers[t.id]) {
+            map.removeLayer(truckMarkers[t.id]);
+            delete truckMarkers[t.id];
+          }
+          trucksDiv.removeChild(div);
+        });
       });
     }
 
@@ -172,7 +199,7 @@
           for (let id in data) {
             const t = data[id];
             const distance = haversine(userLat, userLon, t.lat, t.lon);
-            const eta = Math.round(distance / 0.02); // สมมติรถ 20 m/s
+            const eta = Math.round(distance / 0.02);
             trucksArray.push({ id, lat: t.lat, lon: t.lon, distance, eta });
           }
 
@@ -195,6 +222,7 @@
     } else {
       alert("เบราว์เซอร์ไม่รองรับ GPS");
     }
+
   </script>
 </body>
 </html>
