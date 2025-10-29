@@ -1,9 +1,61 @@
-
-<!doctype html>
-<html>
-<head><title>Vehicle</title></head>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Garbage Truck Tracker</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 50px; }
+    h1 { font-size: 3em; }
+  </style>
+</head>
 <body>
-<h1>Vehicle Tracking</h1>
-<script type="module" src="./js/vehicle.js"></script>
+  <h1>Garbage Truck Location Sender</h1>
+  <p id="status">กำลังตรวจหาตำแหน่ง...</p>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
+      authDomain: "suchartwork-1487382986748.firebaseapp.com",
+      databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
+      projectId: "suchartwork-1487382986748",
+      storageBucket: "suchartwork-1487382986748.firebasestorage.app",
+      messagingSenderId: "353884592527",
+      appId: "1:353884592527:web:0d5f392910ab0d2ceb13fa"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const truckId = prompt("ระบุรหัสรถเก็บขยะ เช่น truck1");
+
+    function sendLocation(lat, lon) {
+      set(ref(db, 'trucks/' + truckId), {
+        lat,
+        lon,
+        timestamp: Date.now()
+      });
+      document.getElementById('status').innerText = `ส่งพิกัดล่าสุด: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    }
+
+    function updateLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const { latitude, longitude } = pos.coords;
+          sendLocation(latitude, longitude);
+        }, err => {
+          document.getElementById('status').innerText = "ไม่สามารถรับพิกัดได้";
+        });
+      } else {
+        document.getElementById('status').innerText = "เบราว์เซอร์ไม่รองรับ GPS";
+      }
+    }
+
+    // ส่งทุก 10 วินาที
+    setInterval(updateLocation, 10000);
+    updateLocation();
+  </script>
 </body>
 </html>
