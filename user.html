@@ -1,122 +1,40 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>เวลาที่รถเก็บขยะจะมาถึง</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Google Font Kanit -->
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <title>รถเก็บขยะเทศบาลใกล้ฉัน</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
   <style>
-    html, body { 
-      height: 100%; 
-      margin: 0; 
-      font-family: 'Kanit', sans-serif; 
-      background: #f0f0f0;
-    }
-
-    #map { height: 60%; }
-
-    #eta-panel { 
-      height: 40%; 
-      overflow-y: auto; 
-      padding: 10px; 
-      text-align: center;
-      background: #fff;
-    }
-
-    #eta-panel h2 {
-      font-size: 2em;
-      margin-bottom: 10px;
-      text-align: center;
-    }
-
-    .truck { 
-      padding: 20px; 
-      margin: 5px auto; 
-      border-radius: 8px; 
-      color: #fff; 
-      text-align: center;
-      width: 90%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .nearest { 
-      font-size: 3em;
-      background-color: #e74c3c; 
-      font-weight: 700;
-    }
-
-    .other { 
-      font-size: 2.2em;
-      background-color: #3498db; 
-      font-weight: 700;
-    }
-
-    .truck button {
-      margin-left: 15px;
-      padding: 5px 10px;
-      font-size: 0.9em;
-      border: none;
-      border-radius: 5px;
-      background-color: #c0392b;
-      color: white;
-      cursor: pointer;
-    }
-
-    /* Marker Styles */
-    .marker-div {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      font-family: 'Kanit', sans-serif;
-      border-radius: 50%;
-      border: 2px solid #fff;
-      text-align: center;
-    }
-
+    body { margin:0; font-family: 'Kanit', sans-serif; text-align:center; background:black; color:white; }
+    #map { width: 100vw; height: 60vh; }
+    #etaBox { font-size: 3rem; padding: 20px; background:#111; }
     .marker-nearest {
-      background-color: #e74c3c;
-      width: 80px;
-      height: 80px;
-      font-size: 18px;
+      background: yellow;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 1.8rem;
       font-weight: bold;
-      animation: pulse 1.5s infinite;
+      animation: blink 1s infinite;
     }
-
-    .marker-other {
-      background-color: #3498db;
-      width: 60px;
-      height: 60px;
-      font-size: 16px;
-      font-weight: bold;
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.3); opacity: 0.7; }
-      100% { transform: scale(1); opacity: 1; }
-    }
+    @keyframes blink { 50% { opacity: 0.4; } }
   </style>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+
 </head>
 <body>
-  <div id="map"></div>
-  <div id="eta-panel">
-    <h2>เวลาที่รถเก็บขยะจะมาถึง</h2>
-    <div id="trucks"></div>
-  </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <h2>รถเก็บขยะเทศบาลใกล้ฉัน</h2>
+  <div id="etaBox">กำลังค้นหาตำแหน่งของคุณ...</div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- Firebase -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
@@ -131,131 +49,78 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    let userLat = 0, userLon = 0;
-    const truckMarkers = {};
+    let userLat = null, userLon = null;
 
-    const map = L.map('map').setView([13.736717, 100.523186], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    const map = L.map('map').setView([15.0, 100.0], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-    const homeMarker = L.marker([0,0], {title: "บ้านคุณ"}).addTo(map);
+    let nearestMarker = null;
+    let polyline = null;
+    let polylinePoints = [];
 
-    function haversine(lat1, lon1, lat2, lon2) {
+    function haversine(lat1,lon1,lat2,lon2){
       const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
       const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-      const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c;
+      return R * 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
     }
 
-    function updateTrucksDisplay(trucksArray) {
-      const trucksDiv = document.getElementById('trucks');
-      trucksDiv.innerHTML = '';
+    function updateNearest(trucks){
+      if (!userLat || !userLon || trucks.length === 0) return;
 
-      trucksArray.forEach((t, idx) => {
-        const div = document.createElement('div');
-        div.className = 'truck ' + (idx===0 ? 'nearest' : 'other');
-        div.innerHTML = `
-          ${t.id}: ${t.eta} นาที
-          <button>ลบ</button>
-        `;
-        trucksDiv.appendChild(div);
+      const nearest = trucks[0];
+      const eta = Math.round(nearest.distance / 0.02);
+      document.getElementById("etaBox").textContent = `รถ ${nearest.id} จะมาถึงใน ${eta} นาที`;
 
-        const btn = div.querySelector('button');
-        btn.addEventListener('click', () => {
-          if (truckMarkers[t.id]) {
-            map.removeLayer(truckMarkers[t.id]);
-            delete truckMarkers[t.id];
-          }
-          trucksDiv.removeChild(div);
-        });
-      });
-    }
-
-    function createTruckMarker(t, isNearest) {
-      const className = isNearest ? 'marker-div marker-nearest' : 'marker-div marker-other';
       const icon = L.divIcon({
-        html: `<div class="${className}">${t.id}<br>${t.eta}นาที</div>`,
-        className: '',
-        iconSize: [0,0]
+        html:`<div class="marker-nearest">${nearest.id}</div>`,
+        className:'', iconSize:[0,0]
       });
-      return L.marker([t.lat, t.lon], {icon}).addTo(map);
-    }
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        userLat = pos.coords.latitude;
-        userLon = pos.coords.longitude;
-        homeMarker.setLatLng([userLat, userLon]).bindPopup("บ้านคุณ").openPopup();
-        map.setView([userLat, userLon], 14);
+      if(nearestMarker){
+        nearestMarker.setLatLng([nearest.lat,nearest.lon]).setIcon(icon);
+      } else {
+        nearestMarker = L.marker([nearest.lat,nearest.lon],{icon}).addTo(map);
+      }
 
-        const trucksRef = ref(db, 'trucks/');
-        onValue(trucksRef, snapshot => {
-          const data = snapshot.val() || {};
-
-          const trucksArray = [];
-          for (let id in data) {
-            const t = data[id];
-
-            // กรองรถที่ไม่มีชื่อหรือพิกัด null
-            if(!id || id.trim() === '') continue;
-            if(t.lat == null || t.lon == null) continue;
-
-            const distance = haversine(userLat, userLon, t.lat, t.lon);
-            const eta = Math.round(distance / 0.02);
-            trucksArray.push({ id, lat: t.lat, lon: t.lon, distance, eta });
-          }
-
-          trucksArray.sort((a,b) => a.distance - b.distance);
-          updateTrucksDisplay(trucksArray);
-
-          // ------------------------
-          // ลบ Marker ของรถที่ไม่มีใน Firebase
-          const currentIds = trucksArray.map(t => t.id);
-          for (let id in truckMarkers) {
-            if (!currentIds.includes(id)) {
-              map.removeLayer(truckMarkers[id]);
-              delete truckMarkers[id];
-            }
-          }
-          // ------------------------
-
-          // อัพเดท Marker ของรถที่ยังอยู่
-          trucksArray.forEach((t, idx) => {
-            if(truckMarkers[t.id]) {
-              const className = idx===0 ? 'marker-div marker-nearest' : 'marker-div marker-other';
-              const newIcon = L.divIcon({ html: `<div class="${className}">${t.id}<br>${t.eta}นาที</div>`, className:'', iconSize:[0,0] });
-              truckMarkers[t.id].setIcon(newIcon).setLatLng([t.lat, t.lon]);
-            } else {
-              truckMarkers[t.id] = createTruckMarker(t, idx===0);
-            }
-          });
-
-        });
-
-      }, err => alert("ไม่สามารถหาตำแหน่งบ้านได้"));
-    } else {
-      alert("เบราว์เซอร์ไม่รองรับ GPS");
-    }
-
-    // ------------------------
-    // Wake Lock - หน้าจอสว่างตลอดเวลา
-    async function keepScreenOn() {
-      if ('wakeLock' in navigator) {
-        try {
-          const wakeLock = await navigator.wakeLock.request('screen');
-          console.log('หน้าจอจะไม่ดับ');
-          wakeLock.addEventListener('release', () => console.log('Wake lock ถูกยกเลิก'));
-        } catch (err) {
-          console.error(`ไม่สามารถเปิด Wake Lock: ${err}`);
-        }
+      polylinePoints.push([nearest.lat, nearest.lon]);
+      if(polyline){
+        polyline.setLatLngs(polylinePoints);
+      } else {
+        polyline = L.polyline(polylinePoints, { weight: 8, color: "#00ff55" }).addTo(map);
       }
     }
-    window.addEventListener('load', keepScreenOn);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') keepScreenOn();
+
+    navigator.geolocation.watchPosition(pos=>{
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+      map.setView([userLat,userLon],15);
     });
-    // ------------------------
+
+    onValue(ref(db,"trucks/"), snap => {
+      const data = snap.val() || {};
+      const list = [];
+
+      for(let id in data){
+        const t = data[id];
+        if(!id || !t.lat || !t.lon) continue;
+
+        const dist = haversine(userLat,userLon,t.lat,t.lon);
+        list.push({id,lat:t.lat,lon:t.lon,distance:dist});
+      }
+
+      list.sort((a,b)=>a.distance-b.distance);
+      updateNearest(list);
+    });
+
+    // ✅ Wake Lock (หน้าจอติดสว่าง)
+    let wakeLock;
+    async function keepAwake(){
+      try { wakeLock = await navigator.wakeLock.request("screen"); }
+      catch(e){}
+    }
+    keepAwake();
+    document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") keepAwake(); });
 
   </script>
 </body>
