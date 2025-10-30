@@ -1,40 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>รถเก็บขยะเทศบาลใกล้ฉัน</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+  <title>เวลาที่รถเก็บขยะจะมาถึง</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Google Font Kanit -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <style>
-    body { margin:0; font-family: 'Kanit', sans-serif; text-align:center; background:black; color:white; }
-    #map { width: 100vw; height: 60vh; }
-    #etaBox { font-size: 3rem; padding: 20px; background:#111; }
-    .marker-nearest {
-      background: yellow;
-      padding: 12px;
-      border-radius: 10px;
-      font-size: 1.8rem;
-      font-weight: bold;
-      animation: blink 1s infinite;
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Kanit', sans-serif;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
     }
-    @keyframes blink { 50% { opacity: 0.4; } }
+
+    #map { height: 75%; }
+
+    #eta-box {
+      height: 25%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #ffffff;
+      font-size: 3.2em;
+      font-weight: 700;
+      text-align: center;
+      border-top: 3px solid #ddd;
+    }
+
+    /* Marker Pulse Effect */
+    .marker-nearest {
+      background-color: #e74c3c;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      border: 3px solid #fff;
+      font-size: 20px;
+      font-weight: 700;
+      animation: pulse 1.3s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%   { transform: scale(1); opacity:1; }
+      50%  { transform: scale(1.4); opacity:0.65; }
+      100% { transform: scale(1); opacity:1; }
+    }
   </style>
-
-  <!-- Google Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
-
 </head>
 <body>
 
-  <h2>รถเก็บขยะเทศบาลใกล้ฉัน</h2>
-  <div id="etaBox">กำลังค้นหาตำแหน่งของคุณ...</div>
   <div id="map"></div>
+  <div id="eta-box">กำลังหารถเก็บขยะใกล้สุด...</div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Firebase -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
@@ -50,78 +84,80 @@
     const db = getDatabase(app);
 
     let userLat = null, userLon = null;
-
-    const map = L.map('map').setView([15.0, 100.0], 14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-
     let nearestMarker = null;
-    let polyline = null;
-    let polylinePoints = [];
 
-    function haversine(lat1,lon1,lat2,lon2){
+    const map = L.map('map').setView([13.736717, 100.523186], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+    const homeMarker = L.marker([0,0]).addTo(map).bindPopup("บ้านคุณ");
+
+    function haversine(lat1, lon1, lat2, lon2) {
       const R = 6371;
-      const dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+      const dLat = (lat2-lat1)*Math.PI/180;
+      const dLon = (lon2-lon1)*Math.PI/180;
       const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-      return R * 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+      return R * (2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
     }
 
-    function updateNearest(trucks){
-      if (!userLat || !userLon || trucks.length === 0) return;
+    const etaBox = document.getElementById("eta-box");
+
+    function updateNearest(trucks) {
+      if(trucks.length === 0) {
+        etaBox.textContent = "ยังไม่มีรถส่งข้อมูลเข้าระบบ";
+        if(nearestMarker) { map.removeLayer(nearestMarker); nearestMarker = null; }
+        return;
+      }
 
       const nearest = trucks[0];
+
       const eta = Math.round(nearest.distance / 0.02);
-      document.getElementById("etaBox").textContent = `รถ ${nearest.id} จะมาถึงใน ${eta} นาที`;
+      etaBox.textContent = `รถ ${nearest.id} จะมาถึงใน ${eta} นาที`;
 
       const icon = L.divIcon({
-        html:`<div class="marker-nearest">${nearest.id}</div>`,
-        className:'', iconSize:[0,0]
+        html: `<div class="marker-nearest">${nearest.id}</div>`,
+        className:'',
+        iconSize:[0,0]
       });
 
-      if(nearestMarker){
-        nearestMarker.setLatLng([nearest.lat,nearest.lon]).setIcon(icon);
-      } else {
-        nearestMarker = L.marker([nearest.lat,nearest.lon],{icon}).addTo(map);
-      }
-
-      polylinePoints.push([nearest.lat, nearest.lon]);
-      if(polyline){
-        polyline.setLatLngs(polylinePoints);
-      } else {
-        polyline = L.polyline(polylinePoints, { weight: 8, color: "#00ff55" }).addTo(map);
-      }
+      if(nearestMarker) nearestMarker.setLatLng([nearest.lat, nearest.lon]).setIcon(icon);
+      else nearestMarker = L.marker([nearest.lat, nearest.lon],{icon}).addTo(map);
     }
 
-    navigator.geolocation.watchPosition(pos=>{
-      userLat = pos.coords.latitude;
-      userLon = pos.coords.longitude;
-      map.setView([userLat,userLon],15);
-    });
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>{
+        userLat = pos.coords.latitude;
+        userLon = pos.coords.longitude;
+        homeMarker.setLatLng([userLat,userLon]).openPopup();
+        map.setView([userLat,userLon], 14);
 
-    onValue(ref(db,"trucks/"), snap => {
-      const data = snap.val() || {};
-      const list = [];
+        onValue(ref(db,'trucks/'), snapshot=>{
+          const data = snapshot.val();
+          if(!data) return;
 
-      for(let id in data){
-        const t = data[id];
-        if(!id || !t.lat || !t.lon) continue;
+          let arr = [];
+          for(let id in data){
+            const t = data[id];
+            if(!id || !t.lat || !t.lon) continue;
+            const distance = haversine(userLat,userLon,t.lat,t.lon);
+            arr.push({id, lat:t.lat, lon:t.lon, distance});
+          }
 
-        const dist = haversine(userLat,userLon,t.lat,t.lon);
-        list.push({id,lat:t.lat,lon:t.lon,distance:dist});
-      }
+          arr.sort((a,b)=>a.distance-b.distance);
+          updateNearest(arr);
+        });
 
-      list.sort((a,b)=>a.distance-b.distance);
-      updateNearest(list);
-    });
-
-    // ✅ Wake Lock (หน้าจอติดสว่าง)
-    let wakeLock;
-    async function keepAwake(){
-      try { wakeLock = await navigator.wakeLock.request("screen"); }
-      catch(e){}
+      });
     }
-    keepAwake();
-    document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") keepAwake(); });
 
+    // Wake Lock – หน้าจอสว่างตลอดเวลา
+    async function keepScreenOn(){
+      if('wakeLock' in navigator){
+        try { await navigator.wakeLock.request('screen'); } catch(e){}
+      }
+    }
+    window.addEventListener('load', keepScreenOn);
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') keepScreenOn(); });
   </script>
+
 </body>
 </html>
